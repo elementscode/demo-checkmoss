@@ -1,0 +1,41 @@
+import "./style.css";
+import { session, redirect } from "@elements/app";
+import { signout } from "#app/shared/services/auth";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+
+function onSignout() {
+  signout();
+  redirect("/signin");
+}
+
+<Layout (title: string, width: string = "")>
+  <head>
+    <title>{title} · checkmoss</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class={["page-shell row site-header-inner", width]}>
+        <a href="/" class="site-brand row">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="2" y="2" width="9" height="9" rx="1.5" fill="currentColor" />
+            <rect x="13" y="13" width="9" height="9" rx="1.5" fill="currentColor" />
+            <rect x="13" y="2" width="9" height="9" rx="1.5" fill="currentColor" opacity="0.28" />
+            <rect x="2" y="13" width="9" height="9" rx="1.5" fill="currentColor" opacity="0.28" />
+          </svg>
+          checkmoss
+        </a>
+        <nav class="site-nav cluster is-md">
+          <a e:if={session.isLoggedIn()} href="/">Play</a>
+          <a e:if={session.isLoggedIn()} href={`/players/${session.get("userName")}`}>{session.get("userName")}</a>
+          <button e:if={session.isLoggedIn()} class="is-ghost is-sm" onclick={() => onSignout()}>Sign out</button>
+          <a e:if={!session.isLoggedIn()} href="/signin">Sign in</a>
+        </nav>
+      </div>
+    </header>
+    <main class={["page-shell site-main", width]}>
+      <slot/>
+    </main>
+  </body>
+</Layout>

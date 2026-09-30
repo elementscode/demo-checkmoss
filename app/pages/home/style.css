@@ -1,0 +1,124 @@
+@import "#app/shared/styles/page.css";
+
+.lobby {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.lobby-side {
+  position: sticky;
+  top: var(--space-6);
+}
+
+.tc-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.tc-button {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  height: auto;
+  padding-block: var(--space-4);
+}
+
+.tc-button strong {
+  font-size: var(--text-2xl);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-none);
+}
+
+.tc-button span {
+  font-size: var(--text-xs);
+  color: inherit;
+  opacity: 0.8;
+}
+
+.lobby-table {
+  width: 100%;
+}
+
+.resume {
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.resume .button {
+  white-space: nowrap;
+}
+
+.lobby-table td,
+.lobby-table th {
+  vertical-align: middle;
+}
+
+.lobby-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.lobby-table .act {
+  text-align: right;
+  width: 1%;
+  white-space: nowrap;
+}
+
+.lobby-empty {
+  color: var(--ink-soft);
+  padding-block: var(--space-4);
+}
+
+.online-list li {
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.online-list a {
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+}
+
+.online-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--success);
+  margin-inline-end: var(--space-2);
+}
+
+.online-rating {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+.waiting-dot {
+  animation: waiting-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes waiting-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (max-width: 52rem) {
+  .lobby {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lobby-side {
+    position: static;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waiting-dot {
+    animation: none;
+  }
+}

@@ -1,0 +1,41 @@
+@import "#app/shared/styles/page.css";
+
+.signin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.signin-grid > * {
+  margin: 0;
+}
+
+.signin-intro {
+  grid-column: 1 / -1;
+}
+
+.demo-list li {
+  justify-content: space-between;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--rule-soft, var(--rule));
+}
+
+.demo-list li:last-child {
+  border-bottom: 0;
+}
+
+.demo-name {
+  font-weight: var(--weight-medium);
+}
+
+.demo-rating {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 45rem) {
+  .signin-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

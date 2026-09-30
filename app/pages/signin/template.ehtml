@@ -1,0 +1,97 @@
+import "./style.css";
+import { redirect } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { signin } from "#app/shared/services/auth";
+
+export interface DemoPlayer {
+  id: string;
+  handle: string;
+  rating: number;
+}
+
+interface SigninForm {
+  login: string;
+  password: string;
+  error: string;
+}
+
+export const DEMO_PASSWORD = "checkmoss";
+
+function onSubmit(form: SigninForm) {
+  try {
+    signin(form.login, form.password);
+    form.error = "";
+    redirect("/");
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+function onUseDemo(form: SigninForm, handle: string) {
+  form.login = handle;
+  form.password = DEMO_PASSWORD;
+  onSubmit(form);
+}
+
+<html lang="en" class="page-signin" (
+  demo: DemoPlayer[],
+  private form: SigninForm = { login: "", password: "", error: "" },
+)>
+  <Layout title="Sign in" width="is-form">
+    <div class="signin-grid">
+      <div class="signin-intro stack is-xs">
+        <h1>Sign in to play</h1>
+        <p class="lede">Live games at 3+2, 5+0 and 10+0, rated after every result.</p>
+      </div>
+
+      <form class="card" onsubmit={() => onSubmit(form)}>
+        <div class="card-body stack">
+          <p e:if={form.error} class="callout is-danger" role="alert">{form.error}</p>
+
+          <div class="field">
+            <label for="login">Username or email</label>
+            <input id="login"
+                   name="username"
+                   value={form.login}
+                   autocomplete="username"
+                   autocapitalize="none"
+                   spellcheck={false}
+                   required>
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password"
+                   name="password"
+                   type="password"
+                   value={form.password}
+                   autocomplete="current-password"
+                   required>
+          </div>
+
+          <button type="submit" class="is-primary is-block">Sign in</button>
+
+          <p class="text-sm">New here? <a href="/signup">Create an account</a></p>
+        </div>
+      </form>
+
+      <section class="card">
+        <div class="card-head">
+          <h2 class="text-md">Demo players</h2>
+        </div>
+        <div class="card-body stack is-sm">
+          <p class="text-sm">Every demo account's password is <code>{DEMO_PASSWORD}</code>. Ada and Chen are mid-game.</p>
+          <ul class="demo-list stack is-xs">
+            <li e:for={p of demo} class="row">
+              <span class="row is-baseline gap-2">
+                <span class="demo-name">{p.handle}</span>
+                <span class="demo-rating text-sm">{p.rating}</span>
+              </span>
+              <button type="button" class="is-sm" onclick={() => onUseDemo(form, p.handle)}>Sign in as {p.handle}</button>
+            </li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </Layout>
+</html>

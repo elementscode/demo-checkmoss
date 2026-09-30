@@ -1,0 +1,542 @@
+import "./style.css";
+import type { Listener } from "@elements/app";
+import { Chess, Square } from "chess.js";
+import { Layout } from "#app/shared/templates/layout";
+import { GameState, PlayerInfo, Color, replay, sideToMove, timeLeft, formatClock, resultText, timeControlLabel } from "#app/shared/chess";
+import { move, flag, resign, offerDraw, declineDraw, loadGame } from "#app/shared/services/games";
+
+interface Drag {
+  from: string;
+  x: number;
+  y: number;
+  size: number;
+  over: string | null;
+}
+
+interface Board {
+  game: GameState;
+  offset: number;
+  now: number;
+  ply: number | null;
+  selected: string | null;
+  drag: Drag | null;
+  promo: { from: string; to: string } | null;
+  flipped: boolean;
+  confirmResign: boolean;
+  flagSent: boolean;
+  error: string;
+}
+
+interface SquareView {
+  id: string;
+  piece: { type: string; color: Color } | null;
+  dark: boolean;
+  last: boolean;
+  check: boolean;
+  target: boolean;
+  fileLabel: string;
+  rankLabel: string;
+}
+
+const GLYPHS: Record<string, string> = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+const FILES = "abcdefgh";
+
+function glyph(type: string): string {
+  return GLYPHS[type] + "︎";
+}
+
+function myColor(g: GameState, myId: string): Color | null {
+  return g.white.id === myId ? "w" : g.black.id === myId ? "b" : null;
+}
+
+function viewPly(b: Board): number {
+  return b.ply ?? b.game.moves.length;
+}
+
+function isLive(b: Board): boolean {
+  return b.game.status === "active" && b.ply === null;
+}
+
+function squares(b: Board): SquareView[] {
+  let ply = viewPly(b);
+  let chess = replay(b.game.moves, ply);
+  let history = chess.history({ verbose: true });
+  let last = history[history.length - 1];
+  let targets = b.selected
+    ? chess.moves({ square: b.selected as Square, verbose: true }).map((m) => m.to as string)
+    : [];
+  let checkColor = chess.inCheck() ? chess.turn() : null;
+  let out: SquareView[] = [];
+
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      let file = b.flipped ? 7 - col : col;
+      let rank = b.flipped ? row : 7 - row;
+      let id = FILES[file] + (rank + 1);
+      let piece = chess.get(id as Square) ?? null;
+
+      out.push({
+        id,
+        piece: piece ? { type: piece.type, color: piece.color } : null,
+        dark: (file + rank) % 2 === 0,
+        last: !!last && (last.from === id || last.to === id),
+        check: !!piece && piece.type === "k" && piece.color === checkColor,
+        target: targets.includes(id),
+        fileLabel: row === 7 ? FILES[file] : "",
+        rankLabel: col === 0 ? String(rank + 1) : "",
+      });
+    }
+  }
+
+  return out;
+}
+
+function squareAt(b: Board, e: PointerEvent): { sq: string | null; x: number; y: number; size: number } {
+  let el = (e.target as Element).closest(".board") as HTMLElement;
+  let r = el.getBoundingClientRect();
+  let size = r.width / 8;
+  let x = e.clientX - r.left;
+  let y = e.clientY - r.top;
+  let col = Math.floor(x / size);
+  let row = Math.floor(y / size);
+
+  if (col < 0 || col > 7 || row < 0 || row > 7) {
+    return { sq: null, x, y, size };
+  }
+
+  let file = b.flipped ? 7 - col : col;
+  let rank = b.flipped ? row : 7 - row;
+
+  return { sq: FILES[file] + (rank + 1), x, y, size };
+}
+
+function canMove(b: Board, myId: string): boolean {
+  return isLive(b) && myColor(b.game, myId) === sideToMove(b.game.moves) && !b.promo;
+}
+
+function ownsPiece(b: Board, myId: string, sq: string): boolean {
+  let piece = replay(b.game.moves).get(sq as Square);
+  return !!piece && piece.color === myColor(b.game, myId);
+}
+
+function isTarget(b: Board, from: string, to: string): boolean {
+  return replay(b.game.moves).moves({ square: from as Square, verbose: true }).some((m) => m.to === to);
+}
+
+function onPointerDown(b: Board, myId: string, e: PointerEvent) {
+  if (e.button !== 0 || !canMove(b, myId)) {
+    return;
+  }
+
+  let at = squareAt(b, e);
+
+  if (!at.sq) {
+    return;
+  }
+
+  if (b.selected && b.selected !== at.sq && isTarget(b, b.selected, at.sq)) {
+    tryMove(b, b.selected, at.sq);
+    return;
+  }
+
+  if (!ownsPiece(b, myId, at.sq)) {
+    b.selected = null;
+    return;
+  }
+
+  ((e.target as Element).closest(".board") as HTMLElement).setPointerCapture(e.pointerId);
+  b.selected = at.sq;
+  b.drag = { from: at.sq, x: at.x, y: at.y, size: at.size, over: at.sq };
+}
+
+function onPointerMove(b: Board, e: PointerEvent) {
+  if (!b.drag) {
+    return;
+  }
+
+  let at = squareAt(b, e);
+
+  b.drag.x = at.x;
+  b.drag.y = at.y;
+  b.drag.over = at.sq;
+}
+
+function onPointerUp(b: Board, e: PointerEvent) {
+  if (!b.drag) {
+    return;
+  }
+
+  let from = b.drag.from;
+  let to = squareAt(b, e).sq;
+
+  b.drag = null;
+
+  if (to && to !== from && isTarget(b, from, to)) {
+    tryMove(b, from, to);
+  }
+}
+
+function tryMove(b: Board, from: string, to: string) {
+  let piece = replay(b.game.moves).get(from as Square);
+
+  if (piece?.type === "p" && (to[1] === "8" || to[1] === "1")) {
+    b.promo = { from, to };
+    return;
+  }
+
+  commit(b, from, to, undefined);
+}
+
+function onPromote(b: Board, type: string) {
+  let p = b.promo;
+
+  b.promo = null;
+
+  if (p) {
+    commit(b, p.from, p.to, type);
+  }
+}
+
+/** Plays the move on screen at once; the server's broadcast then confirms it. */
+function commit(b: Board, from: string, to: string, promotion: string | undefined) {
+  let chess = replay(b.game.moves);
+  let played;
+
+  try {
+    played = chess.move({ from, to, promotion });
+  } catch {
+    return;
+  }
+
+  let now = Date.now() + b.offset;
+  let color = sideToMove(b.game.moves);
+  let left = timeLeft(b.game, color, now) + b.game.incrementMs;
+
+  b.game = {
+    ...b.game,
+    moves: [...b.game.moves, played.san],
+    clocks: [...b.game.clocks, left],
+    whiteMs: color === "w" ? left : b.game.whiteMs,
+    blackMs: color === "b" ? left : b.game.blackMs,
+    lastMoveAt: now,
+  };
+  b.selected = null;
+  b.error = "";
+
+  try {
+    move(b.game.id, from, to, promotion);
+  } catch (err: any) {
+    b.error = err.message;
+    onNotify(b, loadGame(b.game.id));
+  }
+}
+
+function onNotify(b: Board, next: GameState) {
+  b.game = next;
+  b.offset = next.serverNow - Date.now();
+  b.flagSent = false;
+
+  if (next.status !== "active") {
+    b.selected = null;
+    b.drag = null;
+    b.promo = null;
+    b.confirmResign = false;
+  }
+}
+
+function onTick(b: Board) {
+  b.now = Date.now();
+
+  let g = b.game;
+
+  if (g.status !== "active" || g.lastMoveAt === null || b.flagSent) {
+    return;
+  }
+
+  if (timeLeft(g, sideToMove(g.moves), b.now + b.offset) <= 0) {
+    b.flagSent = true;
+    flag(g.id);
+  }
+}
+
+function onKeyDown(b: Board, e: KeyboardEvent) {
+  if ((e.target as Element).closest?.("input, textarea")) {
+    return;
+  }
+
+  switch (e.key) {
+    case "ArrowLeft":
+      goTo(b, viewPly(b) - 1);
+      break;
+
+    case "ArrowRight":
+      goTo(b, viewPly(b) + 1);
+      break;
+
+    case "ArrowUp":
+      goTo(b, 0);
+      break;
+
+    case "ArrowDown":
+      goTo(b, b.game.moves.length);
+      break;
+
+    default:
+      return;
+  }
+
+  e.preventDefault();
+}
+
+function goTo(b: Board, ply: number) {
+  let clamped = Math.max(0, Math.min(ply, b.game.moves.length));
+
+  b.ply = clamped === b.game.moves.length ? null : clamped;
+  b.selected = null;
+}
+
+function onInit(b: Board, listener: Listener<GameState>) {
+  b.offset = b.game.serverNow - Date.now();
+  b.now = Date.now();
+  listener.on("notify", (next) => onNotify(b, next));
+  setInterval(() => onTick(b), 100);
+  window.addEventListener("keydown", (e) => onKeyDown(b, e));
+}
+
+function onResign(b: Board) {
+  if (!b.confirmResign) {
+    b.confirmResign = true;
+    return;
+  }
+
+  b.confirmResign = false;
+  resign(b.game.id);
+}
+
+function clockMs(b: Board, color: Color): number {
+  let g = b.game;
+
+  if (b.ply !== null && b.ply > 0 && g.clocks.length >= b.ply) {
+    return clockAtPly(g, color, b.ply);
+  }
+
+  if (b.ply === 0) {
+    return g.initialMs;
+  }
+
+  return timeLeft(g, color, b.now + b.offset);
+}
+
+/** A side's clock as it stood after the given ply, for replay. */
+function clockAtPly(g: GameState, color: Color, ply: number): number {
+  for (let i = ply - 1; i >= 0; i--) {
+    if ((i % 2 === 0 ? "w" : "b") === color) {
+      return g.clocks[i];
+    }
+  }
+
+  return g.initialMs;
+}
+
+function isRunning(b: Board, color: Color): boolean {
+  return isLive(b) && b.game.lastMoveAt !== null && sideToMove(b.game.moves) === color;
+}
+
+function moveRows(g: GameState): { id: string; no: number; w: string; b: string }[] {
+  let rows = [];
+
+  for (let i = 0; i < g.moves.length; i += 2) {
+    rows.push({ id: String(i), no: i / 2 + 1, w: g.moves[i], b: g.moves[i + 1] ?? "" });
+  }
+
+  return rows;
+}
+
+function statusLine(b: Board, myId: string): string {
+  let g = b.game;
+
+  if (g.status === "finished") {
+    return resultText(g, g.white.handle, g.black.handle);
+  }
+
+  let chess = replay(g.moves);
+  let side = chess.turn() === "w" ? "White" : "Black";
+
+  if (g.moves.length === 0) {
+    return "White to move. The clocks start after the first move.";
+  }
+
+  let who = myColor(g, myId) === chess.turn() ? "Your move" : `${side} to move`;
+
+  return chess.inCheck() ? `${who}, in check` : who;
+}
+
+/** Keeps the newest move in view while following the game live. */
+function onRowInsert(b: Board, row: Element) {
+  let list = row.closest(".moves");
+
+  if (list && b.ply === null) {
+    list.scrollTop = list.scrollHeight;
+  }
+}
+
+function deltaText(d: number | null): string {
+  return d === null ? "" : d >= 0 ? `+${d}` : `${d}`;
+}
+
+function scoreText(g: GameState): string {
+  return g.result === "1/2-1/2" ? "½–½" : g.result === "1-0" ? "1–0" : "0–1";
+}
+
+function opponent(g: GameState, myId: string): PlayerInfo {
+  return g.white.id === myId ? g.black : g.white;
+}
+
+<PlayerBar (b: Board, color: Color)>
+  <div class="player-bar row">
+    <div class="player-name row">
+      <a href={`/players/${color === "w" ? b.game.white.handle : b.game.black.handle}`}>{color === "w" ? b.game.white.handle : b.game.black.handle}</a>
+      <span class="player-rating">{color === "w" ? b.game.white.rating : b.game.black.rating}</span>
+      <span e:if={b.game.status === "finished"}
+            class={["player-rating delta", ((color === "w" ? b.game.whiteDelta : b.game.blackDelta) ?? 0) >= 0 ? "is-up" : "is-down"]}>
+        {deltaText(color === "w" ? b.game.whiteDelta : b.game.blackDelta)}
+      </span>
+    </div>
+    <div class={["clock", isRunning(b, color) && "is-running", clockMs(b, color) < 20_000 && "is-low"]}>
+      {formatClock(clockMs(b, color))}
+    </div>
+  </div>
+</PlayerBar>
+
+<html lang="en" class="page-game" (
+  listener: Listener<GameState>,
+  initial: GameState,
+  myId: string,
+  startPly: number | null = null,
+  private b: Board = {
+    game: initial,
+    offset: 0,
+    now: initial.serverNow,
+    ply: startPly,
+    selected: null,
+    drag: null,
+    promo: null,
+    flipped: myColor(initial, myId) === "b",
+    confirmResign: false,
+    flagSent: false,
+    error: "",
+  },
+) oninit={() => onInit(b, listener)}>
+  <Layout title={`${initial.white.handle} vs ${initial.black.handle}`}>
+    <div class="game">
+      <div class="board-col stack is-sm">
+        <PlayerBar {b} color={b.flipped ? "w" : "b"} />
+
+        <div class="board"
+             onpointerdown={(e) => onPointerDown(b, myId, e)}
+             onpointermove={(e) => onPointerMove(b, e)}
+             onpointerup={(e) => onPointerUp(b, e)}
+             onpointercancel={() => b.drag = null}>
+          <div e:for={sq of squares(b)}
+               class={["sq", sq.dark && "is-dark", sq.last && "is-last", sq.id === b.selected && "is-selected", sq.check && "is-check", sq.target && "is-target", sq.piece && "has-piece", b.drag?.over === sq.id && sq.target && "is-hover"]}>
+            <span e:if={sq.piece}
+                  class={["piece", `is-${sq.piece!.color}`, b.drag?.from === sq.id && "is-lifted"]}>{glyph(sq.piece!.type)}</span>
+            <span e:if={sq.fileLabel} class="coord is-file">{sq.fileLabel}</span>
+            <span e:if={sq.rankLabel} class="coord is-rank">{sq.rankLabel}</span>
+          </div>
+
+          <div e:if={b.drag}
+               class={["drag-ghost", `is-${myColor(b.game, myId)}`]}
+               style={`transform: translate(${b.drag!.x - b.drag!.size / 2}px, ${b.drag!.y - b.drag!.size / 2}px) scale(1.12)`}>
+            {glyph(replay(b.game.moves).get(b.drag!.from as Square)?.type ?? "p")}
+          </div>
+
+          <div e:if={b.promo} class="promo">
+            <div class="promo-choices" role="group" aria-label="Promote to">
+              <button e:for={t of ["q", "r", "n", "b"].map((id) => ({ id }))}
+                      class={`is-${myColor(b.game, myId)}`}
+                      aria-label={t.id}
+                      onclick={() => onPromote(b, t.id)}>{glyph(t.id)}</button>
+            </div>
+          </div>
+        </div>
+
+        <PlayerBar {b} color={b.flipped ? "b" : "w"} />
+
+        <p e:if={b.error} class="callout is-danger" role="alert">{b.error}</p>
+      </div>
+
+      <aside class="side stack">
+        <div e:if={b.game.status === "finished"} class="card result-banner">
+          <div class="card-body stack is-sm">
+            <p class="result-score">{scoreText(b.game)}</p>
+            <p>{statusLine(b, myId)}</p>
+            <div class="cluster is-sm" style="justify-content: center">
+              <a class="button is-primary is-sm" href="/">Back to the lobby</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head row" style="justify-content: space-between">
+            <span class="text-sm">{timeControlLabel(b.game.initialMs, b.game.incrementMs)} · {b.game.status === "active" ? "live" : "finished"}</span>
+            <span e:if={!myColor(b.game, myId) && b.game.status === "active"} class="pill is-accent">Watching</span>
+          </div>
+          <div class="card-body stack is-sm">
+            <p e:if={b.game.status === "active"} class="status-line">{statusLine(b, myId)}</p>
+
+            <div class="moves">
+              <table class="moves-table">
+                <tbody>
+                  <tr e:for={r of moveRows(b.game)} oninsert={(e) => onRowInsert(b, e.target)}>
+                    <td class="move-no">{r.no}</td>
+                    <td>
+                      <button class={["move-btn is-sm", viewPly(b) === r.no * 2 - 1 && "is-current"]}
+                              onclick={() => goTo(b, r.no * 2 - 1)}>{r.w}</button>
+                    </td>
+                    <td>
+                      <button e:if={r.b}
+                              class={["move-btn is-sm", viewPly(b) === r.no * 2 && "is-current"]}
+                              onclick={() => goTo(b, r.no * 2)}>{r.b}</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <p e:if={b.game.moves.length === 0} class="text-sm">No moves yet.</p>
+            </div>
+
+            <div class="replay-controls">
+              <button class="is-sm" aria-label="First move" onclick={() => goTo(b, 0)}>⏮&#xFE0E;</button>
+              <button class="is-sm" aria-label="Previous move" onclick={() => goTo(b, viewPly(b) - 1)}>◀&#xFE0E;</button>
+              <button class="is-sm" aria-label="Next move" onclick={() => goTo(b, viewPly(b) + 1)}>▶&#xFE0E;</button>
+              <button class="is-sm" aria-label="Last move" onclick={() => goTo(b, b.game.moves.length)}>⏭&#xFE0E;</button>
+            </div>
+          </div>
+        </div>
+
+        <div e:if={b.game.status === "active" && myColor(b.game, myId)} class="card">
+          <div class="card-body stack is-sm">
+            <div e:if={b.game.drawOfferBy && b.game.drawOfferBy !== myId} class="callout is-accent stack is-sm">
+              <span>{opponent(b.game, myId).handle} offers a draw.</span>
+              <div class="cluster is-sm">
+                <button class="is-primary is-sm" onclick={() => offerDraw(b.game.id)}>Accept draw</button>
+                <button class="is-sm" onclick={() => declineDraw(b.game.id)}>Decline</button>
+              </div>
+            </div>
+
+            <div class="cluster is-sm">
+              <button e:if={b.game.drawOfferBy === myId} class="is-sm" disabled>Draw offered</button>
+              <button e:elseif={!b.game.drawOfferBy} class="is-sm" onclick={() => offerDraw(b.game.id)}>Offer draw</button>
+              <button class={["is-sm", b.confirmResign ? "is-danger" : ""]} onclick={() => onResign(b)}>
+                {b.confirmResign ? "Confirm resign" : "Resign"}
+              </button>
+              <button e:if={b.confirmResign} class="is-ghost is-sm" onclick={() => b.confirmResign = false}>Keep playing</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="is-ghost is-sm" onclick={() => b.flipped = !b.flipped}>Flip board</button>
+      </aside>
+    </div>
+  </Layout>
+</html>
