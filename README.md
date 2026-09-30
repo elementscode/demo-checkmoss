@@ -1,10 +1,12 @@
+![Checkmoss, an online chess site built with Elements: ada and chen mid-game in a 10+0 Sicilian, with both clocks, the last move highlighted and the full move list.](https://elements.dev/demos/01a0f3d6-1303-72d6-9e79-fd8db076ab1d/poster?v=02dd212a0960)
+
 # Checkmoss
 
 > A demo app built with [Elements](https://elements.dev).
 
-A lobby of open challenges at 3+2, 5+0 and 10+0, live games with clocks, spectators and legal moves only, draw offers, ratings, and move-by-move replays.
+Open challenges at 3+2, 5+0 and 10+0, live games with clocks and legal moves, spectators, ratings and replays.
 
-**Demo:** [Checkmoss](TBD)
+**Demo:** [Checkmoss](https://elements.dev/demos/01a0f3d6-1303-72d6-9e79-fd8db076ab1d)
 
 ## Agent specs
 
