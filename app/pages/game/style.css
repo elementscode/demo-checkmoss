@@ -1,0 +1,342 @@
+@import "#app/shared/styles/page.css";
+
+.page-game {
+  --sq-light: oklch(0.965 0.022 115);
+  --sq-dark: oklch(0.78 0.07 140);
+  --sq-last: oklch(0.9 0.12 100 / 0.7);
+  --sq-select: oklch(0.8 0.14 100 / 0.85);
+  --sq-check: oklch(0.65 0.2 28 / 0.85);
+  --piece-white: #fbfbf7;
+  --piece-black: #1d2320;
+}
+
+.game {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.board-col {
+  width: min(100%, 38rem, calc(100dvh - 15rem));
+  min-width: min(100%, 18rem);
+  justify-self: center;
+}
+
+.player-bar {
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-inline: var(--space-3);
+}
+
+.player-name {
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.player-name a {
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-rating {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.delta.is-up {
+  color: var(--success);
+}
+
+.delta.is-down {
+  color: var(--danger);
+}
+
+.clock {
+  min-width: 6.5rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--bg-soft);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  line-height: var(--leading-tight);
+}
+
+.clock.is-running {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-deep);
+  font-weight: var(--weight-semibold);
+}
+
+.clock.is-low.is-running {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.sq {
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: var(--sq-light);
+}
+
+.sq.is-dark {
+  background: var(--sq-dark);
+}
+
+.sq.is-last::before,
+.sq.is-selected::before,
+.sq.is-check::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sq-last);
+}
+
+.sq.is-selected::before {
+  background: var(--sq-select);
+}
+
+.sq.is-check::before {
+  background: radial-gradient(circle, var(--sq-check) 0%, var(--sq-check) 35%, transparent 75%);
+}
+
+.sq.is-target::after {
+  content: "";
+  position: absolute;
+  width: 32%;
+  height: 32%;
+  border-radius: 50%;
+  background: oklch(0.3 0.05 140 / 0.3);
+  pointer-events: none;
+}
+
+.sq.is-target.has-piece::after {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background: radial-gradient(circle, transparent 0%, transparent 62%, oklch(0.3 0.05 140 / 0.35) 64%);
+}
+
+.sq.is-hover {
+  box-shadow: inset 0 0 0 3px oklch(1 0 0 / 0.7);
+}
+
+.piece {
+  position: relative;
+  z-index: 1;
+  font-family: "Apple Symbols", "Segoe UI Symbol", "DejaVu Sans", serif;
+  line-height: 1;
+  cursor: grab;
+}
+
+.board .piece,
+.drag-ghost {
+  font-size: clamp(1.6rem, 9.5cqw, 4.4rem);
+}
+
+.board {
+  container-type: inline-size;
+}
+
+.piece.is-w,
+.drag-ghost.is-w {
+  color: var(--piece-white);
+  -webkit-text-stroke: 1.2px var(--piece-black);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 1px oklch(0 0 0 / 0.25);
+}
+
+.piece.is-b,
+.drag-ghost.is-b {
+  color: var(--piece-black);
+  text-shadow: 0 1px 0 oklch(1 0 0 / 0.25);
+}
+
+.piece.is-lifted {
+  opacity: 0.25;
+}
+
+.coord {
+  position: absolute;
+  font-size: clamp(0.55rem, 1.9cqw, 0.75rem);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  pointer-events: none;
+  color: oklch(0.58 0.08 140);
+}
+
+.sq.is-dark .coord {
+  color: var(--sq-light);
+}
+
+.coord.is-file {
+  right: 0.4em;
+  bottom: 0.2em;
+}
+
+.coord.is-rank {
+  left: 0.4em;
+  top: 0.2em;
+}
+
+.drag-ghost {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  left: 0;
+  width: 12.5%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  font-family: "Apple Symbols", "Segoe UI Symbol", "DejaVu Sans", serif;
+  line-height: 1;
+  pointer-events: none;
+  cursor: grabbing;
+  transform-origin: center;
+}
+
+.promo {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  background: oklch(0 0 0 / 0.45);
+}
+
+.promo-choices {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: var(--shadow-lg);
+}
+
+.promo-choices button {
+  width: 4rem;
+  height: 4rem;
+  padding: 0;
+  font-family: "Apple Symbols", "Segoe UI Symbol", "DejaVu Sans", serif;
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.side {
+  position: sticky;
+  top: var(--space-6);
+}
+
+.status-line {
+  font-weight: var(--weight-semibold);
+}
+
+.moves {
+  max-height: max(12rem, calc(100dvh - 26rem));
+  overflow-y: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.moves-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.moves-table td {
+  padding: 0;
+  border: 0;
+  vertical-align: middle;
+}
+
+.moves-table .move-no {
+  width: 2.5rem;
+  padding-inline: var(--space-2);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  text-align: right;
+}
+
+.move-btn {
+  width: 100%;
+  justify-content: flex-start;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-weight: var(--weight-medium);
+}
+
+.move-btn.is-current {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+.replay-controls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-1);
+}
+
+.result-banner {
+  text-align: center;
+}
+
+.result-score {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-none);
+}
+
+@media (max-width: 56rem) {
+  .game {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  .board-col {
+    width: min(100%, 38rem);
+  }
+
+  .side {
+    position: static;
+  }
+
+  .moves {
+    max-height: 12rem;
+  }
+}
+
+@media (max-width: 30rem) {
+  .clock {
+    min-width: 5.5rem;
+    font-size: var(--text-xl);
+  }
+}

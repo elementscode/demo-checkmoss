@@ -1,0 +1,161 @@
+import "./style.css";
+import { redirect } from "@elements/app";
+import type { Listener } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { LobbyState, LobbyChallenge, LobbyGame, createChallenge, cancelChallenge, acceptChallenge } from "#app/shared/services/lobby";
+import { TIME_CONTROLS, timeControlLabel } from "#app/shared/chess";
+
+interface Me {
+  id: string;
+  handle: string;
+}
+
+interface Lobby {
+  state: LobbyState;
+  error: string;
+}
+
+const PACE: Record<string, string> = { "3+2": "Blitz", "5+0": "Blitz", "10+0": "Rapid" };
+
+function onNotify(lobby: Lobby, me: Me, next: LobbyState) {
+  lobby.state = next;
+
+  if (next.started && next.started.userIds.includes(me.id)) {
+    redirect(`/games/${next.started.gameId}`);
+  }
+}
+
+function onCreate(lobby: Lobby, initialMs: number, incrementMs: number) {
+  try {
+    lobby.error = "";
+    createChallenge(initialMs, incrementMs);
+  } catch (err: any) {
+    lobby.error = err.message;
+  }
+}
+
+function onAccept(lobby: Lobby, challengeId: string) {
+  try {
+    lobby.error = "";
+    redirect(`/games/${acceptChallenge(challengeId)}`);
+  } catch (err: any) {
+    lobby.error = err.message;
+  }
+}
+
+function myChallenge(state: LobbyState, me: Me): LobbyChallenge | undefined {
+  return state.challenges.find((c) => c.creatorId === me.id);
+}
+
+function myGame(state: LobbyState, me: Me): LobbyGame | undefined {
+  return state.games.find((g) => g.whiteHandle === me.handle || g.blackHandle === me.handle);
+}
+
+<html lang="en" class="page-home" (
+  listener: Listener<LobbyState>,
+  initial: LobbyState,
+  me: Me,
+  private lobby: Lobby = { state: initial, error: "" },
+) oninit={() => listener.on("notify", (next) => onNotify(lobby, me, next))}>
+  <Layout title="Lobby">
+    <div class="lobby">
+      <div class="stack is-xl">
+        <div class="callout is-accent row resume" e:if={myGame(lobby.state, me)}>
+          <span>You have a game in progress.</span>
+          <a class="button is-primary is-sm" href={`/games/${myGame(lobby.state, me)!.id}`}>Back to the board</a>
+        </div>
+
+        <section class="stack">
+          <div class="stack is-xs">
+            <h1>Play</h1>
+            <p class="lede">Post a challenge and the first player to accept gets the other color.</p>
+          </div>
+
+          <p e:if={lobby.error} class="callout is-danger" role="alert">{lobby.error}</p>
+
+          <div class="tc-picker">
+            <button e:for={tc of TIME_CONTROLS.map((t) => ({ ...t, id: timeControlLabel(t.initialMs, t.incrementMs) }))}
+                    class={["tc-button", myChallenge(lobby.state, me)?.initialMs === tc.initialMs && myChallenge(lobby.state, me)?.incrementMs === tc.incrementMs ? "is-primary" : ""]}
+                    onclick={() => onCreate(lobby, tc.initialMs, tc.incrementMs)}>
+              <strong>{tc.id}</strong>
+              <span>{PACE[tc.id]}</span>
+            </button>
+          </div>
+
+          <div class="callout row" e:if={myChallenge(lobby.state, me)}>
+            <span class="pill is-accent"><span class="pill-dot waiting-dot"></span>Waiting</span>
+            <span>Your {timeControlLabel(myChallenge(lobby.state, me)!.initialMs, myChallenge(lobby.state, me)!.incrementMs)} challenge is open. The game starts when someone accepts.</span>
+            <button class="is-ghost is-sm" onclick={() => cancelChallenge()}>Cancel</button>
+          </div>
+        </section>
+
+        <section class="stack is-sm">
+          <h2 class="text-xl">Open challenges</h2>
+          <table class="lobby-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th class="num">Rating</th>
+                <th>Time</th>
+                <th class="act"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr e:for={c of lobby.state.challenges}>
+                <td><a href={`/players/${c.handle}`}>{c.handle}</a></td>
+                <td class="num">{c.rating}</td>
+                <td>{timeControlLabel(c.initialMs, c.incrementMs)}</td>
+                <td class="act">
+                  <span e:if={c.creatorId === me.id} class="pill">Yours</span>
+                  <button e:else class="is-primary is-sm" onclick={() => onAccept(lobby, c.id)}>Accept</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p e:if={lobby.state.challenges.length === 0} class="lobby-empty text-sm">No open challenges. Post one above.</p>
+        </section>
+
+        <section class="stack is-sm">
+          <h2 class="text-xl">Games in progress</h2>
+          <table class="lobby-table">
+            <thead>
+              <tr>
+                <th>White</th>
+                <th>Black</th>
+                <th>Time</th>
+                <th class="act"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr e:for={g of lobby.state.games}>
+                <td>{g.whiteHandle} <span class="online-rating text-sm">{g.whiteRating}</span></td>
+                <td>{g.blackHandle} <span class="online-rating text-sm">{g.blackRating}</span></td>
+                <td>{timeControlLabel(g.initialMs, g.incrementMs)}</td>
+                <td class="act"><a class="button is-sm" href={`/games/${g.id}`}>Watch</a></td>
+              </tr>
+            </tbody>
+          </table>
+          <p e:if={lobby.state.games.length === 0} class="lobby-empty text-sm">Nobody is playing right now.</p>
+        </section>
+      </div>
+
+      <aside class="lobby-side card">
+        <div class="card-head row">
+          <h2 class="text-md">Online</h2>
+          <span class="pill">{lobby.state.online.length}</span>
+        </div>
+        <div class="card-body">
+          <ul class="online-list stack is-sm">
+            <li e:for={p of lobby.state.online} class="row">
+              <span><span class="online-dot"></span><a href={`/players/${p.handle}`}>{p.handle}</a></span>
+              <span class="row is-baseline gap-2">
+                <span e:if={p.playing} class="pill is-sm">playing</span>
+                <span class="online-rating text-sm">{p.rating}</span>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </Layout>
+</html>

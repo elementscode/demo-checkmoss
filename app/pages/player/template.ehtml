@@ -1,0 +1,120 @@
+import "./style.css";
+import type { Listener } from "@elements/app";
+import { Layout } from "#app/shared/templates/layout";
+import { timeControlLabel } from "#app/shared/chess";
+
+export interface Profile {
+  id: string;
+  handle: string;
+  rating: number;
+  createdAt: Date;
+}
+
+export interface HistoryRow {
+  id: string;
+  status: "active" | "finished";
+  result: "1-0" | "0-1" | "1/2-1/2" | null;
+  reason: string | null;
+  initialMs: number;
+  incrementMs: number;
+  plies: number;
+  createdAt: Date;
+  asWhite: boolean;
+  opponent: string;
+  opponentRating: number;
+  delta: number | null;
+}
+
+type Outcome = "win" | "loss" | "draw" | "live";
+
+function outcome(g: HistoryRow): Outcome {
+  if (g.status === "active") {
+    return "live";
+  }
+
+  if (g.result === "1/2-1/2") {
+    return "draw";
+  }
+
+  return (g.result === "1-0") === g.asWhite ? "win" : "loss";
+}
+
+const OUTCOME_LABEL: Record<Outcome, string> = { win: "Won", loss: "Lost", draw: "Draw", live: "Playing" };
+
+function count(games: HistoryRow[], o: Outcome): number {
+  return games.filter((g) => outcome(g) === o).length;
+}
+
+function deltaText(d: number | null): string {
+  return d === null ? "" : d >= 0 ? `+${d}` : `${d}`;
+}
+
+function shortDate(d: Date): string {
+  return new Date(d).toLocaleDateString("en", { month: "short", day: "numeric" });
+}
+
+<html lang="en" class="page-player" (
+  profile: Profile,
+  games: HistoryRow[],
+  presence: Listener<unknown>,
+)>
+  <Layout title={profile.handle} width="is-form">
+    <div class="stack is-xl">
+      <div class="profile-head row">
+        <div class="stack is-xs">
+          <p class="eyebrow">Player</p>
+          <h1>{profile.handle}</h1>
+          <p class="muted text-sm">Joined {new Date(profile.createdAt).toLocaleDateString("en", { month: "long", year: "numeric" })}</p>
+        </div>
+        <div class="stack is-xs" style="text-align: right">
+          <span class="muted text-sm">Rating</span>
+          <span class="profile-rating">{profile.rating}</span>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><strong>{games.filter((g) => g.status === "finished").length}</strong><span class="muted text-sm">Games</span></div>
+        <div class="stat"><strong>{count(games, "win")}</strong><span class="muted text-sm">Wins</span></div>
+        <div class="stat"><strong>{count(games, "draw")}</strong><span class="muted text-sm">Draws</span></div>
+        <div class="stat"><strong>{count(games, "loss")}</strong><span class="muted text-sm">Losses</span></div>
+      </div>
+
+      <section class="stack is-sm">
+        <h2 class="text-xl">Games</h2>
+        <table class="history">
+          <thead>
+            <tr>
+              <th>Color · opponent</th>
+              <th>Result</th>
+              <th class="hide-sm">Time</th>
+              <th class="num">Rating</th>
+              <th class="hide-sm">Date</th>
+              <th class="act"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr e:for={g of games}>
+              <td>
+                <span class={["color-chip", g.asWhite ? "is-white" : "is-black"]} title={`${profile.handle} played ${g.asWhite ? "white" : "black"}`}></span>
+                <a href={`/players/${g.opponent}`}>{g.opponent}</a>
+                <span class="muted text-sm"> {g.opponentRating}</span>
+              </td>
+              <td>
+                <span class={["outcome", `is-${outcome(g)}`]}>{OUTCOME_LABEL[outcome(g)]}</span>
+                <span e:if={g.reason} class="muted text-sm"> · {g.reason}</span>
+              </td>
+              <td class="hide-sm">{timeControlLabel(g.initialMs, g.incrementMs)}</td>
+              <td class={["num delta", (g.delta ?? 0) >= 0 ? "is-up" : "is-down"]}>{deltaText(g.delta)}</td>
+              <td class="hide-sm muted text-sm">{shortDate(g.createdAt)}</td>
+              <td class="act">
+                <a e:if={g.status === "active"} class="button is-sm is-primary" href={`/games/${g.id}`}>Watch</a>
+                <a e:else class="button is-sm" href={`/games/${g.id}?ply=0`}>Replay</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p e:if={games.length === 0} class="muted">No games yet.</p>
+      </section>
+    </div>
+  </Layout>
+</html>
