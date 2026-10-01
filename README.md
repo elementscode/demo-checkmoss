@@ -30,10 +30,15 @@ Checkmoss needed accounts, a lobby that shows who is online, moves and clocks pu
 ### What Elements gave the app
 
 - **Live games.** Every move, draw offer and resignation publishes the game's full state on a channel. Both players and every spectator listen for that game, so the board, clocks and move list stay in step on every screen.
+
 - **Who is online.** A page's live connection marks its player online and offline, and the lobby's channel pushes that list along with open challenges and games in progress.
+
 - **Moves as function calls.** The board calls `@rpc` functions to move, offer a draw or resign. The server checks the move is legal, runs the clock and records it in one locked transaction, and a checkmate moves both players' ratings in that same transaction.
+
 - **Flag falls on a schedule.** A one-line cron schedule runs a job every minute that ends games whose clock ran out with nobody watching. Open pages report a flag fall themselves, and the server decides.
+
 - **Sessions.** Players sign up with a username and sign in with either the username or the email.
+
 - **Data from SQL files.** Migrations define the schema and seed four rated players, twelve finished games, one game in progress and an open challenge. The project server applied each one as soon as it was saved.
 
 ### What the project server gave the agent
