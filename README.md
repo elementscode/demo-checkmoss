@@ -23,6 +23,25 @@ app.
 elements create checkmoss -scaffold=elementscode/demo-checkmoss
 ```
 
+## How it's built
+
+Checkmoss needed accounts, a lobby that shows who is online, moves and clocks pushed to players and spectators, and scheduled flag checks. Each of those is a part of Elements, so the agent spent its 17 minutes on chess itself.
+
+### What Elements gave the app
+
+- **Live games from one channel.** `gameChannel` in `app/shared/services/games.ts` carries a game's full state. The game page listens filtered to its own game id, and every move, draw offer and resignation publishes, so both players and any spectators see the same board and clocks.
+- **Presence from the listener.** `trackPresence` in `app/shared/services/presence.ts` hooks a page's listener `connect` and `disconnect` events to record who is online. The `lobby` channel in `app/shared/services/lobby.ts` pushes that list with open challenges and games in progress.
+- **Server calls as function calls.** The board calls `move`, `offerDraw` and `resign` as `@rpc` functions. `playMove` checks legality, runs the clock and records the move in one locked transaction, and a checkmate moves both ratings in that same transaction.
+- **Background work on a schedule.** One line in `index.ts`, `app.cron("every 1m", "sweep flags", ...)`, schedules `SweepFlagsJob` in `app/jobs/sweep-flags.ts` to end games whose clock ran out unwatched. Open pages call the `flag` rpc themselves, and the server decides.
+- **Sessions.** `app/shared/services/auth.ts` signs players up with a username and signs them in with either the username or the email.
+- **Data from SQL files.** Two migrations define the schema and seed four rated players, twelve finished games, one game in progress and an open challenge. The project server applied each one as soon as it was saved.
+
+### What the agent got from the tooling
+
+The agent ran 22 builds in 17 minutes. By the build's own timer, the median build finished in 46 milliseconds, so it checked its work after each edit and kept going. The build caught one error: an async callback passed to a helper in `lobby.ts` that expected a plain one, with a message that showed the fix. It read 32 manual pages as it reached each part, from `recipes/presence` and `channel` to `jobs`, then wrote 29 tests. In a real browser it signed in two players in separate sessions, dragged pieces with real mouse events while a spectator watched, played to checkmate and saw both ratings move, tested draw offers, resignation and a flag fall, and checked three pages at phone width.
+
+Start in `app/shared/services/games.ts`.
+
 ## Demo accounts
 
 The seed creates four players with ratings and twelve finished games between
