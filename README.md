@@ -29,12 +29,12 @@ Checkmoss needed accounts, a lobby that shows who is online, moves and clocks pu
 
 ### What Elements gave the app
 
-- **Live games from one channel.** `gameChannel` in `app/shared/services/games.ts` carries a game's full state. The game page listens filtered to its own game id, and every move, draw offer and resignation publishes, so both players and any spectators see the same board and clocks.
-- **Presence from the listener.** `trackPresence` in `app/shared/services/presence.ts` hooks a page's listener `connect` and `disconnect` events to record who is online. The `lobby` channel in `app/shared/services/lobby.ts` pushes that list with open challenges and games in progress.
-- **Server calls as function calls.** The board calls `move`, `offerDraw` and `resign` as `@rpc` functions. `playMove` checks legality, runs the clock and records the move in one locked transaction, and a checkmate moves both ratings in that same transaction.
-- **Background work on a schedule.** One line in `index.ts`, `app.cron("every 1m", "sweep flags", ...)`, schedules `SweepFlagsJob` in `app/jobs/sweep-flags.ts` to end games whose clock ran out unwatched. Open pages call the `flag` rpc themselves, and the server decides.
-- **Sessions.** `app/shared/services/auth.ts` signs players up with a username and signs them in with either the username or the email.
-- **Data from SQL files.** Two migrations define the schema and seed four rated players, twelve finished games, one game in progress and an open challenge. The project server applied each one as soon as it was saved.
+- **Live games.** Every move, draw offer and resignation publishes the game's full state on a channel. Both players and every spectator listen for that game, so the board, clocks and move list stay in step on every screen.
+- **Who is online.** A page's live connection marks its player online and offline, and the lobby's channel pushes that list along with open challenges and games in progress.
+- **Moves as function calls.** The board calls `@rpc` functions to move, offer a draw or resign. The server checks the move is legal, runs the clock and records it in one locked transaction, and a checkmate moves both players' ratings in that same transaction.
+- **Flag falls on a schedule.** A one-line cron schedule runs a job every minute that ends games whose clock ran out with nobody watching. Open pages report a flag fall themselves, and the server decides.
+- **Sessions.** Players sign up with a username and sign in with either the username or the email.
+- **Data from SQL files.** Migrations define the schema and seed four rated players, twelve finished games, one game in progress and an open challenge. The project server applied each one as soon as it was saved.
 
 ### What the project server gave the agent
 
@@ -43,8 +43,6 @@ The project server runs alongside the agent and answers as soon as a file is sav
 ### What shipped
 
 The app type-checks with zero errors and all 29 tests pass. Every page works on desktop and phone, and live updates arrive across sessions, such as moves and clocks reaching both players and a spectator as a game plays to checkmate.
-
-Start in `app/shared/services/games.ts`.
 
 ## Demo accounts
 
