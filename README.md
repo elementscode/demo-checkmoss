@@ -38,7 +38,7 @@ Checkmoss needed accounts, a lobby that shows who is online, moves and clocks pu
 
 ### What the agent got from the tooling
 
-The agent ran 22 builds in 17 minutes. By the build's own timer, the median build finished in 46 milliseconds, so it checked its work after each edit and kept going. The build caught one error: an async callback passed to a helper in `lobby.ts` that expected a plain one, with a message that showed the fix. It read 32 manual pages as it reached each part, from `recipes/presence` and `channel` to `jobs`, then wrote 29 tests. In a real browser it signed in two players in separate sessions, dragged pieces with real mouse events while a spectator watched, played to checkmate and saw both ratings move, tested draw offers, resignation and a flag fall, and checked three pages at phone width.
+The agent ran 22 builds in 17 minutes. It checked its work after each edit and kept going. The build caught one error: an async callback passed to a helper in `lobby.ts` that expected a plain one, with a message that showed the fix. It read 32 manual pages as it reached each part, from `recipes/presence` and `channel` to `jobs`, then wrote 29 tests. In a real browser it signed in two players in separate sessions, dragged pieces with real mouse events while a spectator watched, played to checkmate and saw both ratings move, tested draw offers, resignation and a flag fall, and checked three pages at phone width.
 
 Start in `app/shared/services/games.ts`.
 
