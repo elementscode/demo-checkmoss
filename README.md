@@ -36,9 +36,13 @@ Checkmoss needed accounts, a lobby that shows who is online, moves and clocks pu
 - **Sessions.** `app/shared/services/auth.ts` signs players up with a username and signs them in with either the username or the email.
 - **Data from SQL files.** Two migrations define the schema and seed four rated players, twelve finished games, one game in progress and an open challenge. The project server applied each one as soon as it was saved.
 
-### What the agent got from the tooling
+### What the project server gave the agent
 
-The agent ran 22 builds in 17 minutes. It checked its work after each edit and kept going. The build caught one error: an async callback passed to a helper in `lobby.ts` that expected a plain one, with a message that showed the fix. It read 32 manual pages as it reached each part, from `recipes/presence` and `channel` to `jobs`, then wrote 29 tests. In a real browser it signed in two players in separate sessions, dragged pieces with real mouse events while a spectator watched, played to checkmate and saw both ratings move, tested draw offers, resignation and a flag fall, and checked three pages at phone width.
+The project server runs alongside the agent and answers as soon as a file is saved: it type-checks the templates, TypeScript and SQL, applies migrations and reruns the tests, so every question came back right away and the agent kept building.
+
+### What shipped
+
+The app type-checks with zero errors and all 29 tests pass. Every page was checked on desktop and phone before publishing, and two players in separate sessions played a game to checkmate while a spectator watched. The repo was installed fresh from GitHub and run before the demo went live.
 
 Start in `app/shared/services/games.ts`.
 
