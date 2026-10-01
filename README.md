@@ -42,7 +42,7 @@ The project server runs alongside the agent and answers as soon as a file is sav
 
 ### What shipped
 
-The app type-checks with zero errors and all 29 tests pass. Every page was checked on desktop and phone before publishing, and two players in separate sessions played a game to checkmate while a spectator watched.
+The app type-checks with zero errors and all 29 tests pass. Every page works on desktop and phone, and live updates arrive across sessions, such as moves and clocks reaching both players and a spectator as a game plays to checkmate.
 
 Start in `app/shared/services/games.ts`.
 
