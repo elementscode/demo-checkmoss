@@ -10,9 +10,6 @@ Open challenges at 3+2, 5+0 and 10+0, live games with clocks and legal moves, sp
 
 ## Agent specs
 
-What one run of the prompt below took, from an empty Elements project to this
-app.
-
 - **Agent:** Claude Code, Opus 5.5 Medium
 - **Time:** 17 min
 - **Cost:** $5.44 at API rates, September 2026
@@ -65,26 +62,7 @@ sign in. You can sign in with the username or the email.
 | chen     | chen@checkmoss.dev  | 1560   |
 | dara     | dara@checkmoss.dev  | 1501   |
 
-## The prompt
-
-```text
-Build an online chess site named checkmoss.
-
-- Sign up, log in, pick a username.
-- Lobby: open challenges with time control (3+2, 5+0, 10+0), who is online,
-  and games in progress to watch.
-- Create a challenge or accept one.
-- Play on a board with drag and drop, legal moves only, clocks, move list,
-  draw offers and resign. Check, checkmate, stalemate and flag fall end the
-  game.
-- A rating per player that moves after each game.
-- Profile with rating and game history, and replay a past game move by move.
-
-Seed four players with ratings and a history of finished games, and one game in
-progress. Show the seeded logins on the sign-in page.
-
-Moves, clocks, the lobby and spectators update in real time.
-```
+**Demo:** [Checkmoss](https://elements.dev/demos/01a0f3d6-1303-72d6-9e79-fd8db076ab1d)
 
 ## License
 
