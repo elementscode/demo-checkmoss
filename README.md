@@ -1,30 +1,16 @@
-![Checkmoss, an online chess site built with Elements: ada and chen mid-game in a 10+0 Sicilian, with both clocks, the last move highlighted and the full move list.](https://elements.dev/demos/01a0f3d6-1303-72d6-9e79-fd8db076ab1d/poster?v=02dd212a0960)
+![Online chess with live, rated games, built by Claude Code on Elements: ada and chen mid-game in a 10+0 Sicilian, with both clocks, the last move highlighted and the full move list.](https://elements.dev/demos/01a0f3d6-1303-72d6-9e79-fd8db076ab1d/poster?v=02dd212a0960)
 
-# Checkmoss
+# Online chess with live, rated games, built by Claude Code on Elements
 
-> A demo app built with [Elements](https://elements.dev).
+> Checkmoss is a full-stack app built with Claude Code on Elements.
 
 Open challenges at 3+2, 5+0 and 10+0, live games with clocks and legal moves, spectators, ratings and replays.
 
-**Demo:** [Checkmoss](https://elements.dev/demos/01a0f3d6-1303-72d6-9e79-fd8db076ab1d)
-
-## Agent specs
-
-- **Agent:** Claude Code, Opus 5.5 Medium
-- **Time:** 17 min
-- **Cost:** $5.44 at API rates, September 2026
-
-## Get started
-
-```bash
-elements create checkmoss -scaffold=elementscode/demo-checkmoss
-```
+[Run this app on your machine](https://elements.dev/demos/01a0f3d6-1303-72d6-9e79-fd8db076ab1d). Use this demo as inspiration, or as the starting point for your own app. Your agent creates a new app with this one as the scaffold, and you prompt it to add whatever features you want.
 
 ## How it's built
 
 Checkmoss needed accounts, a lobby that shows who is online, moves and clocks pushed to players and spectators, and scheduled flag checks. Each of those is a part of Elements, so the agent spent its 17 minutes on chess itself.
-
-### What Elements gave the app
 
 - **Live games.** Every move, draw offer and resignation publishes the game's full state on a channel. Both players and every spectator listen for that game, so the board, clocks and move list stay in step on every screen.
 
@@ -38,32 +24,6 @@ Checkmoss needed accounts, a lobby that shows who is online, moves and clocks pu
 
 - **Data from SQL files.** Migrations define the schema and seed four rated players, twelve finished games, one game in progress and an open challenge. The project server applied each one as soon as it was saved.
 
-### What the project server gave the agent
+## Why Elements
 
-The project server runs alongside the agent and answers as soon as a file is saved: it type-checks the templates, TypeScript and SQL, applies migrations and reruns the tests, so every question came back right away and the agent kept building.
-
-### What shipped
-
-The app type-checks with zero errors and all 29 tests pass. Every page works on desktop and phone, and live updates arrive across sessions, such as moves and clocks reaching both players and a spectator as a game plays to checkmate.
-
-## Demo accounts
-
-The seed creates four players with ratings and twelve finished games between
-them, covering checkmate, resignation, timeout, stalemate and agreed draws.
-Ada and Chen are mid-game in a 10+0 Sicilian, whose clocks hold until the next
-move, and Dara has an open 3+2 challenge in the lobby. Every account's
-password is `checkmoss`, and the sign-in page lists them with a one-click
-sign in. You can sign in with the username or the email.
-
-| Username | Email               | Rating |
-| -------- | ------------------- | ------ |
-| ada      | ada@checkmoss.dev   | 1479   |
-| boris    | boris@checkmoss.dev | 1460   |
-| chen     | chen@checkmoss.dev  | 1560   |
-| dara     | dara@checkmoss.dev  | 1501   |
-
-**Demo:** [Checkmoss](https://elements.dev/demos/01a0f3d6-1303-72d6-9e79-fd8db076ab1d)
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+Elements is an integrated full-stack app framework and a project server. The project server checks the agent's work as it builds: it type-checks the server and browser code, analyzes the program, applies migrations and runs the tests, then reports the results to the agent. A security mistake, such as calling a server-only function from the browser, is a compile error. The agent reads the report and fixes its own mistakes before it tells you a feature is done. The same checks run on every feature you ask for next.
