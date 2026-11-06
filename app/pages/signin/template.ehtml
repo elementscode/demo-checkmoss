@@ -2,6 +2,12 @@ import "./style.css";
 import { redirect } from "@elements/app";
 import { Layout } from "#app/shared/templates/layout";
 import { signin } from "#app/shared/services/auth";
+import { Alert } from "@elements/ui/alert";
+import { Button } from "@elements/ui/button";
+import { Card, CardContent } from "@elements/ui/card";
+import { Field } from "@elements/ui/field";
+import { Input } from "@elements/ui/input";
+import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemActions } from "@elements/ui/item";
 
 export interface DemoPlayer {
   id: string;
@@ -44,54 +50,49 @@ function onUseDemo(form: SigninForm, handle: string) {
         <p class="lede">Live games at 3+2, 5+0 and 10+0, rated after every result.</p>
       </div>
 
-      <form class="card" onsubmit={() => onSubmit(form)}>
-        <div class="card-body stack">
-          <p e:if={form.error} class="callout is-danger" role="alert">{form.error}</p>
+      <Card>
+        <CardContent>
+          <form class="stack" onsubmit={() => onSubmit(form)}>
+            <Alert e:if={form.error} variant="danger" description={form.error} />
 
-          <div class="field">
-            <label for="login">Username or email</label>
-            <input id="login"
-                   name="username"
-                   value={form.login}
-                   autocomplete="username"
-                   autocapitalize="none"
-                   spellcheck={false}
-                   required>
+            <Field label="Username or email" required>
+              <Input value={form.login}
+                     name="username"
+                     attrs={{ id: "login", autocomplete: "username", autocapitalize: "none", spellcheck: "false" }} />
+            </Field>
+
+            <Field label="Password" required>
+              <Input value={form.password}
+                     type="password"
+                     name="password"
+                     attrs={{ id: "password", autocomplete: "current-password" }} />
+            </Field>
+
+            <Button type="submit" variant="primary" block>Sign in</Button>
+
+            <p class="text-sm">New here? <a href="/signup">Create an account</a></p>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card title="Demo players" level={2}>
+        <CardContent>
+          <div class="stack is-sm">
+            <p class="text-sm">Every demo account's password is <code>{DEMO_PASSWORD}</code>. Ada and Chen are mid-game.</p>
+            <ItemGroup label="Demo players">
+              <Item e:for={p of demo} size="xs">
+                <ItemContent>
+                  <ItemTitle>{p.handle}</ItemTitle>
+                  <ItemDescription>{p.rating}</ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Button size="sm" onclick={() => onUseDemo(form, p.handle)}>Sign in as {p.handle}</Button>
+                </ItemActions>
+              </Item>
+            </ItemGroup>
           </div>
-
-          <div class="field">
-            <label for="password">Password</label>
-            <input id="password"
-                   name="password"
-                   type="password"
-                   value={form.password}
-                   autocomplete="current-password"
-                   required>
-          </div>
-
-          <button type="submit" class="is-primary is-block">Sign in</button>
-
-          <p class="text-sm">New here? <a href="/signup">Create an account</a></p>
-        </div>
-      </form>
-
-      <section class="card">
-        <div class="card-head">
-          <h2 class="text-md">Demo players</h2>
-        </div>
-        <div class="card-body stack is-sm">
-          <p class="text-sm">Every demo account's password is <code>{DEMO_PASSWORD}</code>. Ada and Chen are mid-game.</p>
-          <ul class="demo-list stack is-xs">
-            <li e:for={p of demo} class="row">
-              <span class="row is-baseline gap-2">
-                <span class="demo-name">{p.handle}</span>
-                <span class="demo-rating text-sm">{p.rating}</span>
-              </span>
-              <button type="button" class="is-sm" onclick={() => onUseDemo(form, p.handle)}>Sign in as {p.handle}</button>
-            </li>
-          </ul>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </div>
   </Layout>
 </html>
