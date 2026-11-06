@@ -19,11 +19,15 @@
 }
 
 .tc-button {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
   height: auto;
   padding-block: var(--space-4);
+}
+
+.tc-button .button-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .tc-button strong {
@@ -32,44 +36,9 @@
   line-height: var(--leading-none);
 }
 
-.tc-button span {
+.tc-button small {
   font-size: var(--text-xs);
-  color: inherit;
   opacity: 0.8;
-}
-
-.lobby-table {
-  width: 100%;
-}
-
-.resume {
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.resume .button {
-  white-space: nowrap;
-}
-
-.lobby-table td,
-.lobby-table th {
-  vertical-align: middle;
-}
-
-.lobby-table .num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.lobby-table .act {
-  text-align: right;
-  width: 1%;
-  white-space: nowrap;
-}
-
-.lobby-empty {
-  color: var(--ink-soft);
-  padding-block: var(--space-4);
 }
 
 .online-list li {
@@ -97,7 +66,11 @@
   color: var(--ink-soft);
 }
 
-.waiting-dot {
+.lobby .act {
+  width: 1%;
+}
+
+.waiting .pill-dot {
   animation: waiting-pulse 1.6s ease-in-out infinite;
 }
 
@@ -118,7 +91,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .waiting-dot {
+  .waiting .pill-dot {
     animation: none;
   }
 }
