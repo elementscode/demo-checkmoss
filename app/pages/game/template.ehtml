@@ -553,7 +553,7 @@ function opponent(g: GameState, myId: string): PlayerInfo {
               <div class="cluster is-sm">
                 <Button e:if={b.game.drawOfferBy === myId} size="sm" disabled>Draw offered</Button>
                 <Button e:elseif={!b.game.drawOfferBy} size="sm" onclick={() => offerDraw(b.game.id)}>Offer draw</Button>
-                <AlertDialog open={b.confirmResign} title="Resign this game?">
+                <AlertDialog open={b.confirmResign} size="sm" title="Resign this game?">
                   <Button slot="trigger" size="sm">Resign</Button>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Keep playing</AlertDialogCancel>
