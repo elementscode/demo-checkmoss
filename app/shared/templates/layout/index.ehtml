@@ -2,6 +2,7 @@ import "./style.css";
 import { session, redirect } from "@elements/app";
 import { signout } from "#app/shared/services/auth";
 import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { Button } from "@elements/ui/button";
 
 function onSignout() {
   signout();
@@ -29,7 +30,7 @@ function onSignout() {
         <nav class="site-nav cluster is-md">
           <a e:if={session.isLoggedIn()} href="/">Play</a>
           <a e:if={session.isLoggedIn()} href={`/players/${session.get("userName")}`}>{session.get("userName")}</a>
-          <button e:if={session.isLoggedIn()} class="is-ghost is-sm" onclick={() => onSignout()}>Sign out</button>
+          <Button e:if={session.isLoggedIn()} variant="link" onclick={() => onSignout()}>Sign out</Button>
           <a e:if={!session.isLoggedIn()} href="/signin">Sign in</a>
         </nav>
       </div>
