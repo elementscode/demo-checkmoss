@@ -88,8 +88,8 @@ function shortDate(d: Date): string {
           <table>
             <thead>
               <tr>
-                <TableHead class="wraps">Color · opponent</TableHead>
-                <TableHead class="wraps">Result</TableHead>
+                <TableHead wrap>Color · opponent</TableHead>
+                <TableHead wrap>Result</TableHead>
                 <TableHead class="hide-sm">Time</TableHead>
                 <TableHead align="end">Rating</TableHead>
                 <TableHead class="hide-sm">Date</TableHead>
@@ -98,12 +98,12 @@ function shortDate(d: Date): string {
             </thead>
             <tbody>
               <tr e:for={g of games}>
-                <TableCell class="wraps">
+                <TableCell wrap>
                   <span class={["color-chip", g.asWhite ? "is-white" : "is-black"]} title={`${profile.handle} played ${g.asWhite ? "white" : "black"}`}></span>
                   <a href={`/players/${g.opponent}`}>{g.opponent}</a>
                   <span class="muted text-sm"> {g.opponentRating}</span>
                 </TableCell>
-                <TableCell class="wraps">
+                <TableCell wrap>
                   <span class={["outcome", `is-${outcome(g)}`]}>{OUTCOME_LABEL[outcome(g)]}</span>
                   <span e:if={g.reason} class="muted text-sm"> · {g.reason}</span>
                 </TableCell>

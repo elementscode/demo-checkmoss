@@ -36,7 +36,6 @@
 
 .history .act {
   width: 1%;
-  white-space: nowrap;
 }
 
 .color-chip {
@@ -86,9 +85,5 @@
 
   .history .hide-sm {
     display: none;
-  }
-
-  .history .wraps {
-    white-space: normal;
   }
 }
