@@ -467,10 +467,10 @@ function opponent(g: GameState, myId: string): PlayerInfo {
 
           <div e:if={b.promo} class="promo">
             <div class="promo-choices" role="group" aria-label="Promote to">
-              <button e:for={t of ["q", "r", "n", "b"].map((id) => ({ id }))}
+              <Button e:for={t of ["q", "r", "n", "b"].map((id) => ({ id }))}
                       class={`is-${myColor(b.game, myId)}`}
-                      aria-label={t.id}
-                      onclick={() => onPromote(b, t.id)}>{glyph(t.id)}</button>
+                      label={t.id}
+                      onclick={() => onPromote(b, t.id)}>{glyph(t.id)}</Button>
             </div>
           </div>
         </div>
