@@ -6,6 +6,8 @@
 
 Open challenges at 3+2, 5+0 and 10+0, live games with clocks and legal moves, spectators, ratings and replays.
 
+Checkmoss uses the `brutalist` theme from @elements/ui.
+
 [Run this app on your machine](https://elements.dev/demos/01a0f3d6-1303-72d6-9e79-fd8db076ab1d). Use this demo as inspiration, or as the starting point for your own app. Your agent creates a new app with this one as the scaffold, and you prompt it to add whatever features you want.
 
 ## How it's built
