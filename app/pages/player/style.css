@@ -23,8 +23,8 @@
 
 .stat {
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-md);
+  border: var(--surface-border-width) solid var(--rule);
+  border-radius: var(--radius-surface);
 }
 
 .stat strong {
@@ -34,23 +34,8 @@
   line-height: var(--leading-tight);
 }
 
-.history {
-  width: 100%;
-}
-
-.history td,
-.history th {
-  vertical-align: middle;
-}
-
-.history .num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 .history .act {
   width: 1%;
-  text-align: right;
   white-space: nowrap;
 }
 
@@ -65,11 +50,11 @@
 }
 
 .color-chip.is-white {
-  background: #fff;
+  background: var(--white);
 }
 
 .color-chip.is-black {
-  background: #222;
+  background: var(--black);
 }
 
 .outcome.is-win {
@@ -101,5 +86,9 @@
 
   .history .hide-sm {
     display: none;
+  }
+
+  .history .wraps {
+    white-space: normal;
   }
 }
