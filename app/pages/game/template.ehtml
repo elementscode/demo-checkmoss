@@ -4,6 +4,14 @@ import { Chess, Square } from "chess.js";
 import { Layout } from "#app/shared/templates/layout";
 import { GameState, PlayerInfo, Color, replay, sideToMove, timeLeft, formatClock, resultText, timeControlLabel } from "#app/shared/chess";
 import { move, flag, resign, offerDraw, declineDraw, loadGame } from "#app/shared/services/games";
+import { Alert, AlertDescription } from "@elements/ui/alert";
+import { AlertDialog, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@elements/ui/alert-dialog";
+import { Badge } from "@elements/ui/badge";
+import { Button } from "@elements/ui/button";
+import { Card, CardHeader, CardDescription, CardAction, CardContent } from "@elements/ui/card";
+import { Empty } from "@elements/ui/empty";
+import { Table, TableCell } from "@elements/ui/table";
+import { drag, type Drag as BoardDrag, type DragState } from "@elements/ui/behaviors";
 
 interface Drag {
   from: string;
@@ -25,6 +33,10 @@ interface Board {
   confirmResign: boolean;
   flagSent: boolean;
   error: string;
+}
+
+interface BoardHandle {
+  drag?: BoardDrag;
 }
 
 interface SquareView {
@@ -91,12 +103,11 @@ function squares(b: Board): SquareView[] {
   return out;
 }
 
-function squareAt(b: Board, e: PointerEvent): { sq: string | null; x: number; y: number; size: number } {
-  let el = (e.target as Element).closest(".board") as HTMLElement;
+function squareAt(b: Board, el: HTMLElement, clientX: number, clientY: number): { sq: string | null; x: number; y: number; size: number } {
   let r = el.getBoundingClientRect();
   let size = r.width / 8;
-  let x = e.clientX - r.left;
-  let y = e.clientY - r.top;
+  let x = clientX - r.left;
+  let y = clientY - r.top;
   let col = Math.floor(x / size);
   let row = Math.floor(y / size);
 
@@ -123,57 +134,70 @@ function isTarget(b: Board, from: string, to: string): boolean {
   return replay(b.game.moves).moves({ square: from as Square, verbose: true }).some((m) => m.to === to);
 }
 
-function onPointerDown(b: Board, myId: string, e: PointerEvent) {
-  if (e.button !== 0 || !canMove(b, myId)) {
-    return;
-  }
-
-  let at = squareAt(b, e);
-
-  if (!at.sq) {
-    return;
-  }
-
-  if (b.selected && b.selected !== at.sq && isTarget(b, b.selected, at.sq)) {
-    tryMove(b, b.selected, at.sq);
-    return;
-  }
-
-  if (!ownsPiece(b, myId, at.sq)) {
-    b.selected = null;
-    return;
-  }
-
-  ((e.target as Element).closest(".board") as HTMLElement).setPointerCapture(e.pointerId);
-  b.selected = at.sq;
-  b.drag = { from: at.sq, x: at.x, y: at.y, size: at.size, over: at.sq };
+/** A drag starts on the player's own piece; a press anywhere else is a click. */
+function onBoardInsert(b: Board, h: BoardHandle, myId: string, el: HTMLElement) {
+  h.drag = drag(el, {
+    threshold: 0,
+    keyboard: false,
+    canStart: (e) => {
+      let at = squareAt(b, el, (e as PointerEvent).clientX, (e as PointerEvent).clientY);
+      return canMove(b, myId) && !!at.sq && ownsPiece(b, myId, at.sq);
+    },
+    onStart: (s) => onDragStart(b, el, s),
+    onMove: (s) => onDragMove(b, el, s),
+    onEnd: (s) => onDragEnd(b, el, s),
+    onCancel: () => b.drag = null,
+  });
 }
 
-function onPointerMove(b: Board, e: PointerEvent) {
+function onDragStart(b: Board, el: HTMLElement, s: DragState) {
+  let at = squareAt(b, el, s.startX, s.startY);
+
+  b.selected = at.sq;
+  b.drag = { from: at.sq!, x: at.x, y: at.y, size: at.size, over: at.sq };
+}
+
+function onDragMove(b: Board, el: HTMLElement, s: DragState) {
   if (!b.drag) {
     return;
   }
 
-  let at = squareAt(b, e);
+  let at = squareAt(b, el, s.x, s.y);
 
   b.drag.x = at.x;
   b.drag.y = at.y;
   b.drag.over = at.sq;
 }
 
-function onPointerUp(b: Board, e: PointerEvent) {
+function onDragEnd(b: Board, el: HTMLElement, s: DragState) {
   if (!b.drag) {
     return;
   }
 
   let from = b.drag.from;
-  let to = squareAt(b, e).sq;
+  let to = squareAt(b, el, s.x, s.y).sq;
 
   b.drag = null;
 
   if (to && to !== from && isTarget(b, from, to)) {
     tryMove(b, from, to);
   }
+}
+
+/** A press that never became a drag: move the selected piece there, or clear the selection. */
+function onBoardClick(b: Board, myId: string, e: MouseEvent) {
+  if (!canMove(b, myId)) {
+    return;
+  }
+
+  let at = squareAt(b, e.currentTarget as HTMLElement, e.clientX, e.clientY);
+
+  if (at.sq && b.selected && b.selected !== at.sq && isTarget(b, b.selected, at.sq)) {
+    tryMove(b, b.selected, at.sq);
+    return;
+  }
+
+  b.selected = null;
 }
 
 function tryMove(b: Board, from: string, to: string) {
@@ -303,16 +327,6 @@ function onInit(b: Board, listener: Listener<GameState>) {
   window.addEventListener("keydown", (e) => onKeyDown(b, e));
 }
 
-function onResign(b: Board) {
-  if (!b.confirmResign) {
-    b.confirmResign = true;
-    return;
-  }
-
-  b.confirmResign = false;
-  resign(b.game.id);
-}
-
 function clockMs(b: Board, color: Color): number {
   let g = b.game;
 
@@ -426,6 +440,7 @@ function opponent(g: GameState, myId: string): PlayerInfo {
     flagSent: false,
     error: "",
   },
+  private h: BoardHandle = {},
 ) oninit={() => onInit(b, listener)}>
   <Layout title={`${initial.white.handle} vs ${initial.black.handle}`}>
     <div class="game">
@@ -433,10 +448,9 @@ function opponent(g: GameState, myId: string): PlayerInfo {
         <PlayerBar {b} color={b.flipped ? "w" : "b"} />
 
         <div class="board"
-             onpointerdown={(e) => onPointerDown(b, myId, e)}
-             onpointermove={(e) => onPointerMove(b, e)}
-             onpointerup={(e) => onPointerUp(b, e)}
-             onpointercancel={() => b.drag = null}>
+             oninsert={(e) => onBoardInsert(b, h, myId, e.target as HTMLElement)}
+             onremove={() => h.drag?.release()}
+             onclick={(e) => onBoardClick(b, myId, e)}>
           <div e:for={sq of squares(b)}
                class={["sq", sq.dark && "is-dark", sq.last && "is-last", sq.id === b.selected && "is-selected", sq.check && "is-check", sq.target && "is-target", sq.piece && "has-piece", b.drag?.over === sq.id && sq.target && "is-hover"]}>
             <span e:if={sq.piece}
@@ -463,79 +477,95 @@ function opponent(g: GameState, myId: string): PlayerInfo {
 
         <PlayerBar {b} color={b.flipped ? "b" : "w"} />
 
-        <p e:if={b.error} class="callout is-danger" role="alert">{b.error}</p>
+        <Alert e:if={b.error} variant="danger" description={b.error} />
       </div>
 
       <aside class="side stack">
-        <div e:if={b.game.status === "finished"} class="card result-banner">
-          <div class="card-body stack is-sm">
-            <p class="result-score">{scoreText(b.game)}</p>
-            <p>{statusLine(b, myId)}</p>
-            <div class="cluster is-sm" style="justify-content: center">
-              <a class="button is-primary is-sm" href="/">Back to the lobby</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-head row" style="justify-content: space-between">
-            <span class="text-sm">{timeControlLabel(b.game.initialMs, b.game.incrementMs)} · {b.game.status === "active" ? "live" : "finished"}</span>
-            <span e:if={!myColor(b.game, myId) && b.game.status === "active"} class="pill is-accent">Watching</span>
-          </div>
-          <div class="card-body stack is-sm">
-            <p e:if={b.game.status === "active"} class="status-line">{statusLine(b, myId)}</p>
-
-            <div class="moves">
-              <table class="moves-table">
-                <tbody>
-                  <tr e:for={r of moveRows(b.game)} oninsert={(e) => onRowInsert(b, e.target)}>
-                    <td class="move-no">{r.no}</td>
-                    <td>
-                      <button class={["move-btn is-sm", viewPly(b) === r.no * 2 - 1 && "is-current"]}
-                              onclick={() => goTo(b, r.no * 2 - 1)}>{r.w}</button>
-                    </td>
-                    <td>
-                      <button e:if={r.b}
-                              class={["move-btn is-sm", viewPly(b) === r.no * 2 && "is-current"]}
-                              onclick={() => goTo(b, r.no * 2)}>{r.b}</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <p e:if={b.game.moves.length === 0} class="text-sm">No moves yet.</p>
-            </div>
-
-            <div class="replay-controls">
-              <button class="is-sm" aria-label="First move" onclick={() => goTo(b, 0)}>⏮&#xFE0E;</button>
-              <button class="is-sm" aria-label="Previous move" onclick={() => goTo(b, viewPly(b) - 1)}>◀&#xFE0E;</button>
-              <button class="is-sm" aria-label="Next move" onclick={() => goTo(b, viewPly(b) + 1)}>▶&#xFE0E;</button>
-              <button class="is-sm" aria-label="Last move" onclick={() => goTo(b, b.game.moves.length)}>⏭&#xFE0E;</button>
-            </div>
-          </div>
-        </div>
-
-        <div e:if={b.game.status === "active" && myColor(b.game, myId)} class="card">
-          <div class="card-body stack is-sm">
-            <div e:if={b.game.drawOfferBy && b.game.drawOfferBy !== myId} class="callout is-accent stack is-sm">
-              <span>{opponent(b.game, myId).handle} offers a draw.</span>
-              <div class="cluster is-sm">
-                <button class="is-primary is-sm" onclick={() => offerDraw(b.game.id)}>Accept draw</button>
-                <button class="is-sm" onclick={() => declineDraw(b.game.id)}>Decline</button>
+        <Card e:if={b.game.status === "finished"} class="result-banner">
+          <CardContent>
+            <div class="stack is-sm">
+              <p class="result-score">{scoreText(b.game)}</p>
+              <p>{statusLine(b, myId)}</p>
+              <div class="cluster is-sm" style="justify-content: center">
+                <Button variant="primary" size="sm" href="/">Back to the lobby</Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            <div class="cluster is-sm">
-              <button e:if={b.game.drawOfferBy === myId} class="is-sm" disabled>Draw offered</button>
-              <button e:elseif={!b.game.drawOfferBy} class="is-sm" onclick={() => offerDraw(b.game.id)}>Offer draw</button>
-              <button class={["is-sm", b.confirmResign ? "is-danger" : ""]} onclick={() => onResign(b)}>
-                {b.confirmResign ? "Confirm resign" : "Resign"}
-              </button>
-              <button e:if={b.confirmResign} class="is-ghost is-sm" onclick={() => b.confirmResign = false}>Keep playing</button>
+        <Card>
+          <CardHeader>
+            <CardDescription>{timeControlLabel(b.game.initialMs, b.game.incrementMs)} · {b.game.status === "active" ? "live" : "finished"}</CardDescription>
+            <CardAction e:if={!myColor(b.game, myId) && b.game.status === "active"}><Badge variant="accent">Watching</Badge></CardAction>
+          </CardHeader>
+          <CardContent>
+            <div class="stack is-sm">
+              <p e:if={b.game.status === "active"} class="status-line">{statusLine(b, myId)}</p>
+
+              <div class="moves">
+                <Table e:if={b.game.moves.length > 0} class="moves-table">
+                  <table>
+                    <tbody>
+                      <tr e:for={r of moveRows(b.game)} oninsert={(e) => onRowInsert(b, e.target)}>
+                        <TableCell align="end" class="move-no">{r.no}</TableCell>
+                        <TableCell>
+                          <Button block size="sm" class="move-btn"
+                                  variant={viewPly(b) === r.no * 2 - 1 ? "secondary" : "ghost"}
+                                  onclick={() => goTo(b, r.no * 2 - 1)}>{r.w}</Button>
+                        </TableCell>
+                        <TableCell>
+                          <Button e:if={r.b} block size="sm" class="move-btn"
+                                  variant={viewPly(b) === r.no * 2 ? "secondary" : "ghost"}
+                                  onclick={() => goTo(b, r.no * 2)}>{r.b}</Button>
+                        </TableCell>
+                      </tr>
+                    </tbody>
+                  </table>
+                </Table>
+                <Empty e:else description="No moves yet." />
+              </div>
+
+              <div class="replay-controls">
+                <Button size="sm" label="First move" onclick={() => goTo(b, 0)}>⏮&#xFE0E;</Button>
+                <Button size="sm" label="Previous move" onclick={() => goTo(b, viewPly(b) - 1)}>◀&#xFE0E;</Button>
+                <Button size="sm" label="Next move" onclick={() => goTo(b, viewPly(b) + 1)}>▶&#xFE0E;</Button>
+                <Button size="sm" label="Last move" onclick={() => goTo(b, b.game.moves.length)}>⏭&#xFE0E;</Button>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <button class="is-ghost is-sm" onclick={() => b.flipped = !b.flipped}>Flip board</button>
+        <Card e:if={b.game.status === "active" && myColor(b.game, myId)}>
+          <CardContent>
+            <div class="stack is-sm">
+              <Alert e:if={b.game.drawOfferBy && b.game.drawOfferBy !== myId} variant="accent" role="status">
+                <AlertDescription>
+                  <div class="stack is-sm">
+                    <span>{opponent(b.game, myId).handle} offers a draw.</span>
+                    <div class="cluster is-sm">
+                      <Button variant="primary" size="sm" onclick={() => offerDraw(b.game.id)}>Accept draw</Button>
+                      <Button size="sm" onclick={() => declineDraw(b.game.id)}>Decline</Button>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              <div class="cluster is-sm">
+                <Button e:if={b.game.drawOfferBy === myId} size="sm" disabled>Draw offered</Button>
+                <Button e:elseif={!b.game.drawOfferBy} size="sm" onclick={() => offerDraw(b.game.id)}>Offer draw</Button>
+                <AlertDialog open={b.confirmResign} title="Resign this game?">
+                  <Button slot="trigger" size="sm">Resign</Button>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep playing</AlertDialogCancel>
+                    <AlertDialogAction variant="danger" onclick={() => resign(b.game.id)}>Confirm resign</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialog>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Button variant="ghost" size="sm" onclick={() => b.flipped = !b.flipped}>Flip board</Button>
       </aside>
     </div>
   </Layout>
